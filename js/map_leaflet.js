@@ -1,11 +1,12 @@
 /* 
     тест библиотеки leaflet
 */
-
-
+let nameMarkers = []; // массив ссылок на объекты маркеров расположенных на карте
+let markers = []; // массив маркеров объектов на карте
+let stateMarkersActive = []; // активные маркеры
 
 // Инициализирую карту
-let map = L.map('mapid').setView([44.3364, 131.6594], 7);
+let map = L.map('mapid').setView([47.887526, 136.693355], 5);
 //Добавляю слой с плитками карты
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -15,18 +16,12 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
     zoomOffset: -1,
     accessToken: 'pk.eyJ1IjoiaGFzdW8iLCJhIjoiY2s3OXFqbHQ1MHc0dTNscGNnN2k5cWIwZCJ9.z4eqlaXwfOdxV_EYBE8qQw'
 }).addTo(map);
-/* 
-//Загружаю файл с координатами объектов
-$.getJSON("/data.json", function(data){
-    L.geoJSON(data).addTo(map);
-});
-*/
 
 
 //объявляю иконки
 // ---------------------------------
 let greenGsmIcon = L.icon({
-    iconUrl: '/img/gsm_green.png',
+    iconUrl: 'init/static/images/gsm_green.png',
     iconSize: [30, 30],
     iconAnchor: [0, 30],
     popupAnchor: [15, -15]
@@ -35,107 +30,69 @@ let greenGsmIcon = L.icon({
 });
 
 let redGsmIcon = L.icon({
-    iconUrl: '/img/gsm_red.png',
+    iconUrl: 'init/static/images/gsm_red.png',
     iconSize: [30, 30],
     iconAnchor: [0, 30],
     popupAnchor: [15, -15]
 });
-// --------------------------------
-
-// все маркеры
-// -----------------------------------------------
-let markers = [{
-    "name": "17230210",
-    "coordinates": [45.89694, 134.940817],
-    "note": "Школа Вострецово"
-},
-{   
-    "name": "17230211",
-    "coordinates": [44.337666, 131.655309],
-    "note":	"Школа Сергеевка: Класс"
-
-},
-{
-    "name": "17230212",
-    "coordinates": [44.450595, 131.759038],
-    "note":	"Школа Нестеровка"
 
 
-},
-{
-    "name": "17230213",
-    "coordinates": [44.486946,	131.575943],
-    "note": "Школа Богуславка"
-
-},
-{
-    "name": "17230214",
-    "coordinates": [53.141589, 140.71728],
-    "note": "КГБУЗ Судмедэкспертиза"
-
-},
-{
-    "name": "17230216",
-    "coordinates": [45.519561, 133.575925],
-    "note": "Школа Ружино"
-
-},
-{
-    "name": "17230217",
-    "coordinates": [45.638485, 133.594583],
-    "note": "Школа Пантелеймоновка"
-
-},
-{
-    "name": "17230215",
-    "coordinates": [44.337336799794116, 131.65478580019337],
-    "note": "Школа Сергеевка: Директор" 
-}
-]; 
-// --------------------------------------------------------
-
-
-
-// список для красных маркеров
-let stateMarkersRed = [
-    
-    "17230217"
-    
-];
-
-
-
-
-let nameMarkers = [];
-//инициализируем маркеры на карте
-function initMarkers(){
-    
-        for (let marker of markers){
-
-            nameMarkers[marker.name] = L.marker(marker['coordinates'], {icon: greenGsmIcon}).addTo(map).bindPopup(marker['note']);
-        }
-        
-
-};
-
+// функция сброса статусов объектов до исходного состояния
 function clearStateMarkers(){
     for (let marker of markers){
-        nameMarkers[marker.name].setIcon(greenGsmIcon);
+        nameMarkers[marker.name].setIcon(redGsmIcon);
 
     }
 
 };
+//-----------------------------------
 
-function changeStateMarksToRed(){
-    for (let redMarker of stateMarkersRed){
-        nameMarkers[redMarker].setIcon(redGsmIcon);
-    }
-
+function getActiveStateFromServer(){
+    $.getJSON("https://hasuo.pythonanywhere.com/init/default/incidentStatus", function(activeMarkers){
+         for (let activeMarker of activeMarkers){
+            nameMarkers[activeMarker].setIcon(greenGsmIcon);
+         }
+    });
 };
 
-initMarkers();
-
-setInterval(function(){
+// функция изменения статусов объектов при аварию
+function changeStateMarksToActive(){
     clearStateMarkers();
-    changeStateMarksToRed();
-}, 1000);
+    getActiveStateFromServer();
+    
+};
+   
+
+
+// --------------------------------------
+
+
+
+
+
+
+
+
+function initMap(){
+    // заполняю массив маркеров объектов для размещения на карте (markers и nameMarkers)
+    $.getJSON("https://hasuo.pythonanywhere.com/init/default/allStations", function(data){
+
+            for (let item of data){
+                markers.push({'name': item['name'],
+                              'coordinates': [item['lat'],	item['long']],
+                              'note': item['note']
+                             });
+
+            }
+
+            for (let marker of markers){
+
+                nameMarkers[marker.name] = L.marker(marker['coordinates'], {icon: redGsmIcon}).addTo(map).bindPopup(marker['note']);
+
+            }
+    });
+};
+//------------------------------------
+
+initMap();
+changeStateMarksToActive();
